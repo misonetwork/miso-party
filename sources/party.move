@@ -1,4 +1,4 @@
-// Copyright (c) Subsonic Labs, LLC
+// Copyright (c) Miso Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Represents parties (individuals or groups) that participate in on-chain
@@ -76,8 +76,6 @@ public struct PartyCreatedEvent has copy, drop {
     name: String,
     /// Kind of the party.
     kind: String,
-    /// Address of the creator.
-    created_by: address,
 }
 
 public struct PartyNameSetEvent has copy, drop {
@@ -162,7 +160,6 @@ public fun new(kind: PartyKind, name: String, ctx: &mut TxContext): (Party, Part
         party_id: party.id(),
         name,
         kind: party.kind.name(),
-        created_by: ctx.sender(),
     });
 
     (party, party_admin_cap)

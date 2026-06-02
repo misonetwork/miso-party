@@ -1,4 +1,4 @@
-// Copyright (c) Subsonic Labs, LLC
+// Copyright (c) Miso Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 /// Represents a party's credit on a work or activity.
