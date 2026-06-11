@@ -22,9 +22,6 @@ public use fun party_kind_name as PartyKind.name;
 
 // === Structs ===
 
-/// One-time witness for the party module.
-public struct PARTY() has drop;
-
 /// A party in the ecosystem. Can represent an individual or a group of parties.
 public struct Party has key {
     /// Unique identifier for this party.
@@ -69,6 +66,11 @@ public enum PartyKind has copy, drop, store {
 
 // === Events ===
 
+/// Emitted when a party is created (creation and `share` happen in the same
+/// transaction, so this is the indexer's discovery signal). The creator's
+/// address is deliberately NOT in the payload: Sui's event envelope already
+/// carries the transaction sender, and the party's controlling identity is
+/// the (transferable) `PartyAdminCap` holder, not the creation sender.
 public struct PartyCreatedEvent has copy, drop {
     /// ID of the newly created party.
     party_id: ID,
@@ -93,11 +95,21 @@ public struct PartyAddedToGroupEvent has copy, drop {
     member_id: ID,
 }
 
-/// Emitted when a party is removed from a group.
+/// Emitted when a party is removed from a group by the group's admin.
 public struct PartyRemovedFromGroupEvent has copy, drop {
     /// ID of the group.
     group_id: ID,
     /// ID of the party removed from the group.
+    member_id: ID,
+}
+
+/// Emitted when a party leaves a group of its own accord (authorized by the
+/// member's own admin cap). Distinct from `PartyRemovedFromGroupEvent` so
+/// indexers can tell departure from eviction.
+public struct PartyLeftGroupEvent has copy, drop {
+    /// ID of the group.
+    group_id: ID,
+    /// ID of the party that left the group.
     member_id: ID,
 }
 
@@ -133,6 +145,10 @@ const EEmptyString: u64 = 32;
 const EDuplicateParty: u64 = 40;
 /// Attempted to add a group as a member of itself.
 const ECantAddSelfAsMember: u64 = 41;
+
+// Reference errors (50-59)
+/// The party is not a member of the group.
+const ENotGroupMember: u64 = 50;
 
 // === Public Functions ===
 
@@ -224,10 +240,32 @@ public fun remove_party(self: &mut Party, cap: &PartyAdminCap, member_id: ID) {
 
     match (&mut self.kind) {
         PartyKind::Group(members) => {
+            assert!(members.contains(&member_id), ENotGroupMember);
             members.remove(&member_id);
 
             emit(PartyRemovedFromGroupEvent {
                 group_id: self.id(),
+                member_id,
+            });
+        },
+        _ => abort ENotGroupKind,
+    }
+}
+
+/// Removes the caller's party from a group, authorized by the *member's* own
+/// admin capability. Group membership is added unilaterally by the group's
+/// admin, but no party can be kept in a group against its will — this is the
+/// member's unconditional exit.
+public fun leave(group: &mut Party, member_cap: &PartyAdminCap) {
+    let member_id = member_cap.party_id;
+
+    match (&mut group.kind) {
+        PartyKind::Group(members) => {
+            assert!(members.contains(&member_id), ENotGroupMember);
+            members.remove(&member_id);
+
+            emit(PartyLeftGroupEvent {
+                group_id: group.id(),
                 member_id,
             });
         },
@@ -303,7 +341,6 @@ public fun party_admin_cap_party_id(cap: &PartyAdminCap): ID {
 // === UID Functions ===
 
 /// Returns a reference to the party's UID for reading dynamic fields.
-/// Requires the admin capability.
 public fun uid(self: &Party): &UID {
     &self.id
 }

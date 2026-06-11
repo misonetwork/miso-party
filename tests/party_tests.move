@@ -13,6 +13,7 @@ const EMaxGroupMembersExceeded: u64 = 30;
 const EMaxNameLengthExceeded: u64 = 31;
 const EEmptyString: u64 = 32;
 const EDuplicateParty: u64 = 40;
+const ENotGroupMember: u64 = 50;
 
 // Must match party.move
 const MAX_NAME_LENGTH: u64 = 200;
@@ -275,4 +276,66 @@ fun test_group_members_on_individual() {
 
     destroy(party);
     destroy(cap);
+}
+
+// === Leave Group ===
+
+#[test]
+fun test_leave_group() {
+    let ctx = &mut tx_context::dummy();
+    let (mut group, group_cap) = test_helpers::group(ctx);
+    let (member, member_cap) = test_helpers::individual(ctx);
+
+    group.add_party(&group_cap, &member);
+    assert_eq!(group.group_members().length(), 1);
+
+    // The member's own cap authorizes the exit — no group admin involved.
+    group.leave(&member_cap);
+    assert_eq!(group.group_members().length(), 0);
+    assert_eq!(sui::event::events_by_type<party::PartyLeftGroupEvent>().length(), 1);
+    assert_eq!(sui::event::events_by_type<party::PartyRemovedFromGroupEvent>().length(), 0);
+
+    destroy(group);
+    destroy(group_cap);
+    destroy(member);
+    destroy(member_cap);
+}
+
+#[test, expected_failure(abort_code = ENotGroupMember, location = partyos::party)]
+fun test_leave_group_not_a_member() {
+    let ctx = &mut tx_context::dummy();
+    let (mut group, group_cap) = test_helpers::group(ctx);
+    let (outsider, outsider_cap) = test_helpers::individual(ctx);
+
+    group.leave(&outsider_cap); // never added
+
+    destroy(group);
+    destroy(group_cap);
+    destroy(outsider);
+    destroy(outsider_cap);
+}
+
+#[test, expected_failure(abort_code = ENotGroupKind, location = partyos::party)]
+fun test_leave_individual() {
+    let ctx = &mut tx_context::dummy();
+    let (mut individual, individual_cap) = test_helpers::individual(ctx);
+    let (member, member_cap) = test_helpers::individual(ctx);
+
+    individual.leave(&member_cap); // not a group
+
+    destroy(individual);
+    destroy(individual_cap);
+    destroy(member);
+    destroy(member_cap);
+}
+
+#[test, expected_failure(abort_code = ENotGroupMember, location = partyos::party)]
+fun test_remove_party_not_a_member() {
+    let ctx = &mut tx_context::dummy();
+    let (mut group, group_cap) = test_helpers::group(ctx);
+
+    group.remove_party(&group_cap, test_helpers::fake_id(ctx));
+
+    destroy(group);
+    destroy(group_cap);
 }
