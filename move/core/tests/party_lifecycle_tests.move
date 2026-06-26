@@ -5,10 +5,10 @@
 /// in: share, post-share mutation, group editing, and the dynamic-field
 /// extension surface.
 #[test_only]
-module partyos::party_lifecycle_tests;
+module miso_party::party_lifecycle_tests;
 
-use partyos::party::{Self, Party};
-use partyos::test_helpers;
+use miso_party::party::{Self, Party};
+use miso_party::test_helpers;
 use std::unit_test::{assert_eq, destroy};
 use sui::dynamic_field;
 use sui::test_scenario;
@@ -112,7 +112,7 @@ fun assert_is_group_kind_accepts_group() {
     destroy(cap);
 }
 
-#[test, expected_failure(abort_code = ENotGroupKind, location = partyos::party)]
+#[test, expected_failure(abort_code = ENotGroupKind, location = party)]
 fun assert_is_group_kind_rejects_individual() {
     let ctx = &mut tx_context::dummy();
     let (individual, cap) = test_helpers::individual(ctx);

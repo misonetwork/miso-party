@@ -1,11 +1,11 @@
-# partyos
+# miso_party
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Move](https://img.shields.io/badge/Move-2024-black.svg)](https://docs.sui.io/concepts/sui-move-concepts)
 
 > On-chain party identity and credits for [Sui](https://sui.io).
 
-`partyos` provides two reusable primitives for any protocol that needs to attribute work to people or organizations:
+`miso_party` provides two reusable primitives for any protocol that needs to attribute work to people or organizations:
 
 - **`Party`** — a named, capability-authorized identity that can represent an **individual** or a **group** of parties. Parties are extensible (other packages can attach data via dynamic fields) and own their lifecycle through a `PartyAdminCap`.
 - **`Credit<Role>`** — a generic attribution pairing a display name with one or more roles, parameterized over a domain-specific role type so each protocol defines its own roles.
@@ -35,7 +35,7 @@ let credit = credit::new(b"Producer".to_string(), vector[my_role]);
 
 ```toml
 [dependencies]
-partyos = { git = "https://github.com/misonetwork/partyos.git", rev = "main" }
+miso_party = { git = "https://github.com/misonetwork/miso-party.git", rev = "main" }
 ```
 
 ## Build & test

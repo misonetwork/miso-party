@@ -1,8 +1,8 @@
 #[test_only]
-module partyos::party_tests;
+module miso_party::party_tests;
 
-use partyos::party;
-use partyos::test_helpers;
+use miso_party::party;
+use miso_party::test_helpers;
 use std::unit_test::{assert_eq, destroy};
 
 // Error codes from party.move
@@ -141,7 +141,7 @@ fun test_set_name_at_max_length() {
 
 // === Boundary Tests ===
 
-#[test, expected_failure(abort_code = EMaxGroupMembersExceeded, location = partyos::party)]
+#[test, expected_failure(abort_code = EMaxGroupMembersExceeded, location = party)]
 fun test_add_party_exceeds_max_group_members() {
     let ctx = &mut tx_context::dummy();
     // Create a group pre-filled with MAX_GROUP_MEMBERS members
@@ -159,7 +159,7 @@ fun test_add_party_exceeds_max_group_members() {
 
 // === Error Conditions ===
 
-#[test, expected_failure(abort_code = EEmptyString, location = partyos::party)]
+#[test, expected_failure(abort_code = EEmptyString, location = party)]
 fun test_new_empty_name() {
     let ctx = &mut tx_context::dummy();
     let (party, cap) = party::new(party::new_individual_kind(), b"".to_string(), ctx);
@@ -167,7 +167,7 @@ fun test_new_empty_name() {
     destroy(cap);
 }
 
-#[test, expected_failure(abort_code = EMaxNameLengthExceeded, location = partyos::party)]
+#[test, expected_failure(abort_code = EMaxNameLengthExceeded, location = party)]
 fun test_new_name_too_long() {
     let ctx = &mut tx_context::dummy();
     let (party, cap) = party::new(
@@ -179,7 +179,7 @@ fun test_new_name_too_long() {
     destroy(cap);
 }
 
-#[test, expected_failure(abort_code = EEmptyString, location = partyos::party)]
+#[test, expected_failure(abort_code = EEmptyString, location = party)]
 fun test_set_name_empty() {
     let ctx = &mut tx_context::dummy();
     let (mut party, cap) = test_helpers::individual(ctx);
@@ -188,7 +188,7 @@ fun test_set_name_empty() {
     destroy(cap);
 }
 
-#[test, expected_failure(abort_code = EMaxNameLengthExceeded, location = partyos::party)]
+#[test, expected_failure(abort_code = EMaxNameLengthExceeded, location = party)]
 fun test_set_name_too_long() {
     let ctx = &mut tx_context::dummy();
     let (mut party, cap) = test_helpers::individual(ctx);
@@ -197,7 +197,7 @@ fun test_set_name_too_long() {
     destroy(cap);
 }
 
-#[test, expected_failure(abort_code = EDuplicateParty, location = partyos::party)]
+#[test, expected_failure(abort_code = EDuplicateParty, location = party)]
 fun test_add_party_duplicate() {
     let ctx = &mut tx_context::dummy();
     let (mut group, group_cap) = test_helpers::group(ctx);
@@ -212,7 +212,7 @@ fun test_add_party_duplicate() {
     destroy(individual_cap);
 }
 
-#[test, expected_failure(abort_code = ENotGroupKind, location = partyos::party)]
+#[test, expected_failure(abort_code = ENotGroupKind, location = party)]
 fun test_add_party_to_individual() {
     let ctx = &mut tx_context::dummy();
     let (mut party1, cap1) = test_helpers::individual(ctx);
@@ -226,7 +226,7 @@ fun test_add_party_to_individual() {
     destroy(cap2);
 }
 
-#[test, expected_failure(abort_code = ENotIndividualKind, location = partyos::party)]
+#[test, expected_failure(abort_code = ENotIndividualKind, location = party)]
 fun test_add_group_to_group() {
     let ctx = &mut tx_context::dummy();
     let (mut group1, cap1) = test_helpers::group(ctx);
@@ -240,7 +240,7 @@ fun test_add_group_to_group() {
     destroy(cap2);
 }
 
-#[test, expected_failure(abort_code = EUnauthorized, location = partyos::party)]
+#[test, expected_failure(abort_code = EUnauthorized, location = party)]
 fun test_unauthorized_cap() {
     let ctx = &mut tx_context::dummy();
     let (mut party1, cap1) = test_helpers::individual(ctx);
@@ -255,7 +255,7 @@ fun test_unauthorized_cap() {
     destroy(cap2);
 }
 
-#[test, expected_failure(abort_code = ENotGroupKind, location = partyos::party)]
+#[test, expected_failure(abort_code = ENotGroupKind, location = party)]
 fun test_remove_party_from_individual() {
     let ctx = &mut tx_context::dummy();
     let (mut party, cap) = test_helpers::individual(ctx);
@@ -267,7 +267,7 @@ fun test_remove_party_from_individual() {
     destroy(cap);
 }
 
-#[test, expected_failure(abort_code = ENotGroupKind, location = partyos::party)]
+#[test, expected_failure(abort_code = ENotGroupKind, location = party)]
 fun test_group_members_on_individual() {
     let ctx = &mut tx_context::dummy();
     let (party, cap) = test_helpers::individual(ctx);
@@ -301,7 +301,7 @@ fun test_leave_group() {
     destroy(member_cap);
 }
 
-#[test, expected_failure(abort_code = ENotGroupMember, location = partyos::party)]
+#[test, expected_failure(abort_code = ENotGroupMember, location = party)]
 fun test_leave_group_not_a_member() {
     let ctx = &mut tx_context::dummy();
     let (mut group, group_cap) = test_helpers::group(ctx);
@@ -315,7 +315,7 @@ fun test_leave_group_not_a_member() {
     destroy(outsider_cap);
 }
 
-#[test, expected_failure(abort_code = ENotGroupKind, location = partyos::party)]
+#[test, expected_failure(abort_code = ENotGroupKind, location = party)]
 fun test_leave_individual() {
     let ctx = &mut tx_context::dummy();
     let (mut individual, individual_cap) = test_helpers::individual(ctx);
@@ -329,7 +329,7 @@ fun test_leave_individual() {
     destroy(member_cap);
 }
 
-#[test, expected_failure(abort_code = ENotGroupMember, location = partyos::party)]
+#[test, expected_failure(abort_code = ENotGroupMember, location = party)]
 fun test_remove_party_not_a_member() {
     let ctx = &mut tx_context::dummy();
     let (mut group, group_cap) = test_helpers::group(ctx);

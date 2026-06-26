@@ -1,8 +1,8 @@
 #[test_only]
-module partyos::credit_tests;
+module miso_party::credit_tests;
 
-use partyos::credit;
-use partyos::test_helpers;
+use miso_party::credit;
+use miso_party::test_helpers;
 use std::unit_test::assert_eq;
 
 // Error codes from credit.move
@@ -50,12 +50,12 @@ fun test_new_display_name_at_max_length() {
 
 // === Error Conditions ===
 
-#[test, expected_failure(abort_code = EEmptyString, location = partyos::credit)]
+#[test, expected_failure(abort_code = EEmptyString, location = credit)]
 fun test_new_empty_display_name() {
     credit::new(b"".to_string(), vector[TestRole::RoleA]);
 }
 
-#[test, expected_failure(abort_code = EMaxDisplayNameLengthExceeded, location = partyos::credit)]
+#[test, expected_failure(abort_code = EMaxDisplayNameLengthExceeded, location = credit)]
 fun test_new_display_name_too_long() {
     credit::new(
         test_helpers::long_string(MAX_DISPLAY_NAME_LENGTH + 1),
@@ -63,7 +63,7 @@ fun test_new_display_name_too_long() {
     );
 }
 
-#[test, expected_failure(abort_code = EDuplicateRoles, location = partyos::credit)]
+#[test, expected_failure(abort_code = EDuplicateRoles, location = credit)]
 fun test_new_duplicate_roles() {
     credit::new(
         b"John Doe".to_string(),
@@ -71,7 +71,7 @@ fun test_new_duplicate_roles() {
     );
 }
 
-#[test, expected_failure(abort_code = ENoRoles, location = partyos::credit)]
+#[test, expected_failure(abort_code = ENoRoles, location = credit)]
 fun test_new_no_roles() {
     credit::new<TestRole>(b"John Doe".to_string(), vector[]);
 }
@@ -85,7 +85,7 @@ fun test_new_at_max_roles() {
     assert_eq!(credit.roles().length(), MAX_ROLES);
 }
 
-#[test, expected_failure(abort_code = EMaxRolesExceeded, location = partyos::credit)]
+#[test, expected_failure(abort_code = EMaxRolesExceeded, location = credit)]
 fun test_new_exceeds_max_roles() {
     let mut roles = vector[];
     (MAX_ROLES + 1).do!(|i| roles.push_back(i));

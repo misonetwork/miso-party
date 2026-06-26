@@ -4,7 +4,7 @@
 /// Represents a party's credit on a work or activity.
 /// A credit pairs a display name with one or more roles, identifying how
 /// a party contributed to the work.
-module partyos::credit;
+module miso_party::credit;
 
 use std::string::String;
 

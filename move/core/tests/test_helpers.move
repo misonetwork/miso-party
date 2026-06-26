@@ -1,7 +1,7 @@
 #[test_only]
-module partyos::test_helpers;
+module miso_party::test_helpers;
 
-use partyos::party::{Self, Party, PartyAdminCap};
+use miso_party::party::{Self, Party, PartyAdminCap};
 use std::string::String;
 
 /// Creates an individual party with a default name for testing.
