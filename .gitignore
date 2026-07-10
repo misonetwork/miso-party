@@ -4,3 +4,8 @@
 **/.coverage*
 Pub.*.toml
 build/
+
+# SDK / codegen
+node_modules/
+package_summaries/
+*.tsbuildinfo

@@ -1,0 +1,18 @@
+import type { SuiCodegenConfig } from "@mysten/codegen";
+
+// Generates typed BCS structs + Move-call builders under ./src/contracts, one
+// folder per Move package. Each entry is a `@local-pkg/<name>` alias plus the
+// filesystem path to the package root (containing Move.toml / sources). Move
+// dependencies (country_code, language_code, framework, …) are pulled into a
+// `deps/` subtree automatically.
+const config: SuiCodegenConfig = {
+  output: "./src/contracts",
+  packages: [
+    // Core PartyOS package. From miso-party/sdk, the package root is one up.
+    { package: "@local-pkg/miso_party", path: ".." },
+    // Extensions (add more as their SDK facades are written).
+    { package: "@local-pkg/party_profile", path: "../../miso-party-extensions/party_profile" },
+  ],
+};
+
+export default config;
