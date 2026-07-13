@@ -5,7 +5,7 @@
 // and the public camelCase types.
 
 import { u256ToB64Url } from "@unconfirmed/ori";
-import type { Media, Party, Profile } from "./types.ts";
+import type { Cta, Media, Party, Profile } from "./types.ts";
 
 /** `CountryCode` / `LanguageCode` are single-field tuple structs → parse to a 1-element array. */
 function unwrapCode(v: unknown): string | undefined {
@@ -31,6 +31,53 @@ export function mapProfile(partyId: string, d: any): Profile {
 // deno-lint-ignore no-explicit-any -- generated parse output is loosely typed
 export function mapMedia(partyId: string, d: any): Media {
   return { partyId, quiltId: u256ToB64Url(String(d.quilt)) };
+}
+
+// The display name of each canonical `ArtistRole` variant (matches Move's
+// `role_name` — note `Dj` → "DJ"). `Custom` carries its own string.
+const CANONICAL_ROLE_NAMES: Record<string, string> = {
+  Artist: "Artist",
+  Producer: "Producer",
+  Dj: "DJ",
+  Composer: "Composer",
+  Songwriter: "Songwriter",
+  Band: "Band",
+  Label: "Label",
+  Collective: "Collective",
+};
+
+/** One parsed `ArtistRole` enum value → its display name (`Custom` → its string). */
+// deno-lint-ignore no-explicit-any -- generated parse output is loosely typed
+function roleName(r: any): string {
+  if (r?.$kind === "Custom") return String(r.Custom ?? r.value ?? "");
+  return CANONICAL_ROLE_NAMES[r?.$kind] ?? String(r?.$kind ?? "");
+}
+
+/** A party's `VecSet<ArtistRole>` → role display names. */
+// deno-lint-ignore no-explicit-any -- generated parse output is loosely typed
+export function mapRoles(d: any): string[] {
+  const contents = d?.roles?.contents ?? [];
+  return (Array.isArray(contents) ? contents : []).map(roleName);
+}
+
+/** A party's `VecSet<String>` tag set → tag strings. */
+// deno-lint-ignore no-explicit-any -- generated parse output is loosely typed
+export function mapTags(d: any): string[] {
+  const contents = d?.tags?.contents ?? [];
+  return (Array.isArray(contents) ? contents : []).map((t: unknown) => String(t));
+}
+
+/** A party's `VecSet<ID>` genre set → genre object id strings. */
+// deno-lint-ignore no-explicit-any -- generated parse output is loosely typed
+export function mapGenres(d: any): string[] {
+  const contents = d?.genres?.contents ?? [];
+  return (Array.isArray(contents) ? contents : []).map((g: unknown) => String(g));
+}
+
+/** A party's `vector<Cta>` → CTA entries, preserving order (position is priority). */
+// deno-lint-ignore no-explicit-any -- generated parse output is loosely typed
+export function mapCtas(d: any): Cta[] {
+  return (Array.isArray(d) ? d : []).map((c: any) => ({ label: String(c.label), url: String(c.url) }));
 }
 
 // deno-lint-ignore no-explicit-any -- generated parse output is loosely typed

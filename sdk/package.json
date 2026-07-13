@@ -21,7 +21,12 @@
     "./view": "./src/view.ts",
     "./types": "./src/types.ts",
     "./extensions/profile": "./src/extensions/profile.ts",
-    "./extensions/media": "./src/extensions/media.ts"
+    "./extensions/media": "./src/extensions/media.ts",
+    "./extensions/roles": "./src/extensions/roles.ts",
+    "./extensions/tags": "./src/extensions/tags.ts",
+    "./extensions/genres": "./src/extensions/genres.ts",
+    "./extensions/ctas": "./src/extensions/ctas.ts",
+    "./extensions/links": "./src/extensions/links.ts"
   },
   "files": [
     "src",
