@@ -71,7 +71,8 @@ fun uid_mut_attaches_dynamic_fields_on_shared_party() {
     scenario.end();
 }
 
-/// Group membership lifecycle across shared objects: admin adds, member leaves.
+/// Group membership lifecycle across shared objects: invite + accept, then the
+/// member leaves. Exercises both `Party` objects being taken shared and mutated.
 #[test]
 fun member_joins_and_leaves_shared_group() {
     let mut scenario = test_scenario::begin(OWNER);
@@ -82,21 +83,26 @@ fun member_joins_and_leaves_shared_group() {
     group.share(&group_cap);
     member.share(&member_cap);
 
-    // Group admin adds the member unilaterally.
+    // Group admin invites; the member accepts with its own cap (consent).
     scenario.next_tx(OWNER);
     let mut group = scenario.take_shared_by_id<Party>(group_id);
-    let member = scenario.take_shared_by_id<Party>(member_id);
-    group.add_party(&group_cap, &member);
+    let mut member = scenario.take_shared_by_id<Party>(member_id);
+    group.invite_party(&group_cap, &member);
+    group.accept_invite(&mut member, &member_cap, scenario.ctx());
     assert_eq!(group.group_members().length(), 1);
+    assert!(member.is_member(group_id));
     test_scenario::return_shared(group);
     test_scenario::return_shared(member);
 
-    // The member exits with their own cap.
+    // The member exits with their own cap; both sides are cleared.
     scenario.next_tx(READER);
     let mut group = scenario.take_shared_by_id<Party>(group_id);
-    group.leave(&member_cap);
+    let mut member = scenario.take_shared_by_id<Party>(member_id);
+    group.leave(&mut member, &member_cap);
     assert!(!group.group_members().contains(&member_id));
+    assert!(!member.is_member(group_id));
     test_scenario::return_shared(group);
+    test_scenario::return_shared(member);
 
     destroy(group_cap);
     destroy(member_cap);

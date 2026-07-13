@@ -14,6 +14,7 @@ module miso_party::party;
 
 use std::string::String;
 use sui::derived_object::claim;
+use sui::dynamic_field as df;
 use sui::event::emit;
 use sui::vec_set::{Self, VecSet};
 
@@ -51,6 +52,31 @@ public struct PartyAdminCapKey(
     ID,
 ) has copy, drop, store;
 
+// === Membership Records (dynamic fields) ===
+
+/// Key for a group's pending invite to an individual party, stored on the
+/// GROUP's UID. Its presence means "invited, awaiting the member's accept".
+public struct PendingInviteKey(
+    /// ID of the invited member party.
+    ID,
+) has copy, drop, store;
+
+/// Key for a membership record, stored on the MEMBER party's UID — one per
+/// group the party belongs to. Only this module can construct it, so a
+/// membership record can never be forged by an extension holding `uid_mut`.
+public struct MembershipKey(
+    /// ID of the group party.
+    ID,
+) has copy, drop, store;
+
+/// A member party's record of belonging to a group, held as the value of a
+/// `MembershipKey` dynamic field on the member. Mirrors the group's member set;
+/// the two are always written together so they can't diverge.
+public struct Membership has store, drop {
+    /// Epoch in which the party joined the group.
+    since_epoch: u64,
+}
+
 // === Enums ===
 
 /// The type of self: individual person or group.
@@ -87,11 +113,35 @@ public struct PartyNameSetEvent has copy, drop {
     name: String,
 }
 
-/// Emitted when a party is added to a group.
-public struct PartyAddedToGroupEvent has copy, drop {
+/// Emitted when a group invites an individual party to join.
+public struct PartyInvitedEvent has copy, drop {
     /// ID of the group.
     group_id: ID,
-    /// ID of the party added to the group.
+    /// ID of the invited member party.
+    member_id: ID,
+}
+
+/// Emitted when an invited party accepts and joins the group.
+public struct PartyJoinedGroupEvent has copy, drop {
+    /// ID of the group.
+    group_id: ID,
+    /// ID of the party that joined.
+    member_id: ID,
+}
+
+/// Emitted when an invited party declines a pending invite.
+public struct PartyInviteDeclinedEvent has copy, drop {
+    /// ID of the group.
+    group_id: ID,
+    /// ID of the party that declined.
+    member_id: ID,
+}
+
+/// Emitted when a group's admin revokes a pending invite.
+public struct PartyInviteRevokedEvent has copy, drop {
+    /// ID of the group.
+    group_id: ID,
+    /// ID of the party whose invite was revoked.
     member_id: ID,
 }
 
@@ -141,14 +191,18 @@ const EMaxNameLengthExceeded: u64 = 31;
 const EEmptyString: u64 = 32;
 
 // Conflict errors (40-49)
-/// Attempted to add a party that is already a member of the group.
+/// Attempted to invite a party that is already a member of the group.
 const EDuplicateParty: u64 = 40;
 /// Attempted to add a group as a member of itself.
 const ECantAddSelfAsMember: u64 = 41;
+/// The party already has a pending invite to this group.
+const EAlreadyInvited: u64 = 42;
 
 // Reference errors (50-59)
 /// The party is not a member of the group.
 const ENotGroupMember: u64 = 50;
+/// No pending invite exists for the party in this group.
+const ENoPendingInvite: u64 = 51;
 
 // === Public Functions ===
 
@@ -202,75 +256,124 @@ public fun set_name(self: &mut Party, cap: &PartyAdminCap, name: String) {
     });
 }
 
-/// Adds an individual party to a group.
-/// Requires the admin capability for the group.
-/// The party being added must be an individual (not another group).
-public fun add_party(self: &mut Party, cap: &PartyAdminCap, member: &Party) {
-    self.authorize(cap);
+/// Invites an individual party to join a group. Requires the group's admin
+/// capability. Records a pending invite on the group; the invited party joins
+/// only by calling `accept_invite` with its own admin cap — so no party can be
+/// made a member without its consent. The party being invited must be an
+/// individual (not another group).
+public fun invite_party(group: &mut Party, group_cap: &PartyAdminCap, member: &Party) {
+    group.authorize(group_cap);
+    group.assert_is_group_kind();
 
-    let group_id = self.id();
+    let group_id = group.id();
     let member_id = member.id();
 
-    match (&mut self.kind) {
-        PartyKind::Group(parties) => {
-            assert!(parties.length() < MAX_GROUP_MEMBERS, EMaxGroupMembersExceeded);
+    assert!(member_id != group_id, ECantAddSelfAsMember);
+    member.assert_is_individual_kind();
+    assert!(!group.group_members().contains(&member_id), EDuplicateParty);
+    assert!(group.group_members().length() < MAX_GROUP_MEMBERS, EMaxGroupMembersExceeded);
+    assert!(!df::exists(&group.id, PendingInviteKey(member_id)), EAlreadyInvited);
 
-            // Assert the party being added is not the group itself.
-            assert!(member_id != group_id, ECantAddSelfAsMember);
-            // Assert the party that is being added is an individual.
-            member.assert_is_individual_kind();
-            // Assert the party that is being added is not already a member of the group.
-            assert!(!parties.contains(&member_id), EDuplicateParty);
-            // Add the party to the group.
-            parties.insert(member_id);
+    df::add(&mut group.id, PendingInviteKey(member_id), true);
 
-            emit(PartyAddedToGroupEvent {
-                group_id,
-                member_id,
-            });
-        },
-        _ => abort ENotGroupKind,
-    }
+    emit(PartyInvitedEvent { group_id, member_id });
 }
 
-/// Removes a party from a group by their ID.
-/// Requires the admin capability for the group.
-public fun remove_party(self: &mut Party, cap: &PartyAdminCap, member_id: ID) {
-    self.authorize(cap);
+/// Accepts a pending invite, joining `member` to `group`. Requires the
+/// *member's* own admin cap (consent). Consumes the pending invite, inserts the
+/// member into the group's set, and writes a `Membership` record onto the
+/// member party — both sides in one transaction, so they can't diverge.
+public fun accept_invite(
+    group: &mut Party,
+    member: &mut Party,
+    member_cap: &PartyAdminCap,
+    ctx: &TxContext,
+) {
+    member.authorize(member_cap);
+    group.assert_is_group_kind();
 
-    match (&mut self.kind) {
+    let group_id = group.id();
+    let member_id = member.id();
+
+    assert!(df::exists(&group.id, PendingInviteKey(member_id)), ENoPendingInvite);
+    let _: bool = df::remove(&mut group.id, PendingInviteKey(member_id));
+
+    match (&mut group.kind) {
         PartyKind::Group(members) => {
-            assert!(members.contains(&member_id), ENotGroupMember);
-            members.remove(&member_id);
-
-            emit(PartyRemovedFromGroupEvent {
-                group_id: self.id(),
-                member_id,
-            });
+            assert!(members.length() < MAX_GROUP_MEMBERS, EMaxGroupMembersExceeded);
+            members.insert(member_id);
         },
         _ => abort ENotGroupKind,
-    }
+    };
+
+    df::add(&mut member.id, MembershipKey(group_id), Membership { since_epoch: ctx.epoch() });
+
+    emit(PartyJoinedGroupEvent { group_id, member_id });
+}
+
+/// Declines a pending invite, authorized by the invited party's own admin cap.
+public fun decline_invite(group: &mut Party, member_cap: &PartyAdminCap) {
+    let member_id = member_cap.party_id;
+    assert!(df::exists(&group.id, PendingInviteKey(member_id)), ENoPendingInvite);
+    let _: bool = df::remove(&mut group.id, PendingInviteKey(member_id));
+
+    emit(PartyInviteDeclinedEvent { group_id: group.id(), member_id });
+}
+
+/// Revokes a pending invite, authorized by the group's admin cap.
+public fun revoke_invite(group: &mut Party, group_cap: &PartyAdminCap, member_id: ID) {
+    group.authorize(group_cap);
+    assert!(df::exists(&group.id, PendingInviteKey(member_id)), ENoPendingInvite);
+    let _: bool = df::remove(&mut group.id, PendingInviteKey(member_id));
+
+    emit(PartyInviteRevokedEvent { group_id: group.id(), member_id });
 }
 
 /// Removes the caller's party from a group, authorized by the *member's* own
-/// admin capability. Group membership is added unilaterally by the group's
-/// admin, but no party can be kept in a group against its will — this is the
-/// member's unconditional exit.
-public fun leave(group: &mut Party, member_cap: &PartyAdminCap) {
-    let member_id = member_cap.party_id;
+/// admin capability — the member's unconditional exit. Clears both the group's
+/// member set and the member's own membership record.
+public fun leave(group: &mut Party, member: &mut Party, member_cap: &PartyAdminCap) {
+    member.authorize(member_cap);
+    let member_id = member.id();
+    let group_id = group.id();
+
+    remove_membership(group, member);
+
+    emit(PartyLeftGroupEvent { group_id, member_id });
+}
+
+/// Removes (evicts) a member from a group, authorized by the *group's* admin
+/// capability. Because this module owns `Party`, it can scrub the member's own
+/// membership record here even without the member's cap — but only the record
+/// for *this* group, so the admin's reach into the member is scoped to
+/// "cancel my group's membership" and nothing else on the member is touchable.
+public fun remove_member(group: &mut Party, group_cap: &PartyAdminCap, member: &mut Party) {
+    group.authorize(group_cap);
+    let member_id = member.id();
+    let group_id = group.id();
+
+    remove_membership(group, member);
+
+    emit(PartyRemovedFromGroupEvent { group_id, member_id });
+}
+
+/// Removes a membership from both sides: the group's member set and the
+/// member's `MembershipKey` record. Aborts if the party is not a member.
+fun remove_membership(group: &mut Party, member: &mut Party) {
+    let group_id = group.id();
+    let member_id = member.id();
 
     match (&mut group.kind) {
         PartyKind::Group(members) => {
             assert!(members.contains(&member_id), ENotGroupMember);
             members.remove(&member_id);
-
-            emit(PartyLeftGroupEvent {
-                group_id: group.id(),
-                member_id,
-            });
         },
         _ => abort ENotGroupKind,
-    }
+    };
+
+    if (df::exists(&member.id, MembershipKey(group_id))) {
+        let Membership { .. } = df::remove(&mut member.id, MembershipKey(group_id));
+    };
 }
 
 /// Creates a new individual party kind.
@@ -318,6 +421,18 @@ public fun group_members(self: &Party): &VecSet<ID> {
         PartyKind::Group(members) => members,
         _ => abort ENotGroupKind,
     }
+}
+
+/// Whether `member` currently holds a membership record for `group_id`. Reads
+/// the member side, so it needs only the member party (no group object) — the
+/// primitive extensions use for member-gated authorization.
+public fun is_member(member: &Party, group_id: ID): bool {
+    df::exists(&member.id, MembershipKey(group_id))
+}
+
+/// Whether the group has a pending invite outstanding for `member_id`.
+public fun has_pending_invite(group: &Party, member_id: ID): bool {
+    df::exists(&group.id, PendingInviteKey(member_id))
 }
 
 /// Returns the human-readable name of the party kind.
