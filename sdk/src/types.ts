@@ -24,3 +24,14 @@ export interface Profile {
   /** ISO 639-1 language codes, e.g. ["en"]. */
   languages: string[];
 }
+
+/**
+ * A party's imagery, stored on-chain as a single Walrus quilt. Individual images
+ * (avatar, header, …) are quilt patches addressed by identifier off-chain — see
+ * `mediaUrls` / `MEDIA_IDENTIFIERS` in `extensions/media`.
+ */
+export interface Media {
+  partyId: string;
+  /** Walrus quilt blob id (base64url) holding the party's images. */
+  quiltId: string;
+}

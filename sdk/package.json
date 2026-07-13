@@ -20,7 +20,8 @@
     "./execute": "./src/execute.ts",
     "./view": "./src/view.ts",
     "./types": "./src/types.ts",
-    "./extensions/profile": "./src/extensions/profile.ts"
+    "./extensions/profile": "./src/extensions/profile.ts",
+    "./extensions/media": "./src/extensions/media.ts"
   },
   "files": [
     "src",
@@ -31,11 +32,13 @@
     "@mysten/codegen": "^0.10.6",
     "@mysten/move-bytecode-template": "^0.4.0",
     "@mysten/sui": "^2.17.0",
-    "@types/bun": "^1.3.14"
+    "@types/bun": "^1.3.14",
+    "@unconfirmed/ori": "^0.1.0"
   },
   "peerDependencies": {
     "@mysten/move-bytecode-template": "^0.4.0",
     "@mysten/sui": "^2.4.0",
+    "@unconfirmed/ori": "^0.1.0",
     "typescript": "^5"
   }
 }

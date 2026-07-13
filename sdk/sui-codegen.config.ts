@@ -12,6 +12,7 @@ const config: SuiCodegenConfig = {
     { package: "@local-pkg/miso_party", path: ".." },
     // Extensions (add more as their SDK facades are written).
     { package: "@local-pkg/party_profile", path: "../../miso-party-extensions/party_profile" },
+    { package: "@local-pkg/party_media", path: "../../miso-party-extensions/party_media" },
   ],
 };
 

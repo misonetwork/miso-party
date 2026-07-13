@@ -6,3 +6,4 @@
 
 export * as party from "./contracts/miso_party/party.ts";
 export * as partyProfile from "./contracts/party_profile/party_profile.ts";
+export * as partyMedia from "./contracts/party_media/party_media.ts";

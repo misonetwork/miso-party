@@ -4,7 +4,8 @@
 // The single boundary between generated BCS-parse output (snake_case, Move-shaped)
 // and the public camelCase types.
 
-import type { Party, Profile } from "./types.ts";
+import { u256ToB64Url } from "@unconfirmed/ori";
+import type { Media, Party, Profile } from "./types.ts";
 
 /** `CountryCode` / `LanguageCode` are single-field tuple structs → parse to a 1-element array. */
 function unwrapCode(v: unknown): string | undefined {
@@ -23,6 +24,13 @@ export function mapProfile(partyId: string, d: any): Profile {
       ? d.languages.map((l: unknown) => unwrapCode(l)).filter((c: unknown): c is string => Boolean(c))
       : [],
   };
+}
+
+// On-chain `Media` holds the quilt blob id as a u256 (decimal string from BCS);
+// expose it in Walrus's base64url form so callers can build aggregator URLs.
+// deno-lint-ignore no-explicit-any -- generated parse output is loosely typed
+export function mapMedia(partyId: string, d: any): Media {
+  return { partyId, quiltId: u256ToB64Url(String(d.quilt)) };
 }
 
 // deno-lint-ignore no-explicit-any -- generated parse output is loosely typed

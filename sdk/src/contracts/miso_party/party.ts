@@ -45,6 +45,12 @@ export const PartyAdminCap = new MoveStruct({ name: `${$moduleName}::PartyAdminC
         party_id: bcs.Address
     } });
 export const PartyAdminCapKey = new MoveTuple({ name: `${$moduleName}::PartyAdminCapKey`, fields: [bcs.Address] });
+export const PendingInviteKey = new MoveTuple({ name: `${$moduleName}::PendingInviteKey`, fields: [bcs.Address] });
+export const MembershipKey = new MoveTuple({ name: `${$moduleName}::MembershipKey`, fields: [bcs.Address] });
+export const Membership = new MoveStruct({ name: `${$moduleName}::Membership`, fields: {
+        /** Epoch in which the party joined the group. */
+        since_epoch: bcs.u64()
+    } });
 export const PartyCreatedEvent = new MoveStruct({ name: `${$moduleName}::PartyCreatedEvent`, fields: {
         /** ID of the newly created party. */
         party_id: bcs.Address,
@@ -59,10 +65,28 @@ export const PartyNameSetEvent = new MoveStruct({ name: `${$moduleName}::PartyNa
         /** Name of the party. */
         name: bcs.string()
     } });
-export const PartyAddedToGroupEvent = new MoveStruct({ name: `${$moduleName}::PartyAddedToGroupEvent`, fields: {
+export const PartyInvitedEvent = new MoveStruct({ name: `${$moduleName}::PartyInvitedEvent`, fields: {
         /** ID of the group. */
         group_id: bcs.Address,
-        /** ID of the party added to the group. */
+        /** ID of the invited member party. */
+        member_id: bcs.Address
+    } });
+export const PartyJoinedGroupEvent = new MoveStruct({ name: `${$moduleName}::PartyJoinedGroupEvent`, fields: {
+        /** ID of the group. */
+        group_id: bcs.Address,
+        /** ID of the party that joined. */
+        member_id: bcs.Address
+    } });
+export const PartyInviteDeclinedEvent = new MoveStruct({ name: `${$moduleName}::PartyInviteDeclinedEvent`, fields: {
+        /** ID of the group. */
+        group_id: bcs.Address,
+        /** ID of the party that declined. */
+        member_id: bcs.Address
+    } });
+export const PartyInviteRevokedEvent = new MoveStruct({ name: `${$moduleName}::PartyInviteRevokedEvent`, fields: {
+        /** ID of the group. */
+        group_id: bcs.Address,
+        /** ID of the party whose invite was revoked. */
         member_id: bcs.Address
     } });
 export const PartyRemovedFromGroupEvent = new MoveStruct({ name: `${$moduleName}::PartyRemovedFromGroupEvent`, fields: {
@@ -165,88 +189,88 @@ export function setName(options: SetNameOptions) {
         arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
     });
 }
-export interface AddPartyArguments {
-    self: RawTransactionArgument<string>;
-    cap: RawTransactionArgument<string>;
+export interface InvitePartyArguments {
+    group: RawTransactionArgument<string>;
+    groupCap: RawTransactionArgument<string>;
     member: RawTransactionArgument<string>;
 }
-export interface AddPartyOptions {
+export interface InvitePartyOptions {
     package?: string;
-    arguments: AddPartyArguments | [
-        self: RawTransactionArgument<string>,
-        cap: RawTransactionArgument<string>,
+    arguments: InvitePartyArguments | [
+        group: RawTransactionArgument<string>,
+        groupCap: RawTransactionArgument<string>,
         member: RawTransactionArgument<string>
     ];
 }
 /**
- * Adds an individual party to a group. Requires the admin capability for the
- * group. The party being added must be an individual (not another group).
+ * Invites an individual party to join a group. Requires the group's admin
+ * capability. Records a pending invite on the group; the invited party joins only
+ * by calling `accept_invite` with its own admin cap — so no party can be made a
+ * member without its consent. The party being invited must be an individual (not
+ * another group).
  */
-export function addParty(options: AddPartyOptions) {
+export function inviteParty(options: InvitePartyOptions) {
     const packageAddress = options.package ?? '@local-pkg/miso_party';
     const argumentsTypes = [
         null,
         null,
         null
     ] satisfies (string | null)[];
-    const parameterNames = ["self", "cap", "member"];
+    const parameterNames = ["group", "groupCap", "member"];
     return (tx: Transaction) => tx.moveCall({
         package: packageAddress,
         module: 'party',
-        function: 'add_party',
+        function: 'invite_party',
         arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
     });
 }
-export interface RemovePartyArguments {
-    self: RawTransactionArgument<string>;
-    cap: RawTransactionArgument<string>;
-    memberId: RawTransactionArgument<string>;
-}
-export interface RemovePartyOptions {
-    package?: string;
-    arguments: RemovePartyArguments | [
-        self: RawTransactionArgument<string>,
-        cap: RawTransactionArgument<string>,
-        memberId: RawTransactionArgument<string>
-    ];
-}
-/**
- * Removes a party from a group by their ID. Requires the admin capability for the
- * group.
- */
-export function removeParty(options: RemovePartyOptions) {
-    const packageAddress = options.package ?? '@local-pkg/miso_party';
-    const argumentsTypes = [
-        null,
-        null,
-        '0x2::object::ID'
-    ] satisfies (string | null)[];
-    const parameterNames = ["self", "cap", "memberId"];
-    return (tx: Transaction) => tx.moveCall({
-        package: packageAddress,
-        module: 'party',
-        function: 'remove_party',
-        arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
-    });
-}
-export interface LeaveArguments {
+export interface AcceptInviteArguments {
     group: RawTransactionArgument<string>;
+    member: RawTransactionArgument<string>;
     memberCap: RawTransactionArgument<string>;
 }
-export interface LeaveOptions {
+export interface AcceptInviteOptions {
     package?: string;
-    arguments: LeaveArguments | [
+    arguments: AcceptInviteArguments | [
         group: RawTransactionArgument<string>,
+        member: RawTransactionArgument<string>,
         memberCap: RawTransactionArgument<string>
     ];
 }
 /**
- * Removes the caller's party from a group, authorized by the _member's_ own admin
- * capability. Group membership is added unilaterally by the group's admin, but no
- * party can be kept in a group against its will — this is the member's
- * unconditional exit.
+ * Accepts a pending invite, joining `member` to `group`. Requires the _member's_
+ * own admin cap (consent). Consumes the pending invite, inserts the member into
+ * the group's set, and writes a `Membership` record onto the member party — both
+ * sides in one transaction, so they can't diverge.
  */
-export function leave(options: LeaveOptions) {
+export function acceptInvite(options: AcceptInviteOptions) {
+    const packageAddress = options.package ?? '@local-pkg/miso_party';
+    const argumentsTypes = [
+        null,
+        null,
+        null
+    ] satisfies (string | null)[];
+    const parameterNames = ["group", "member", "memberCap"];
+    return (tx: Transaction) => tx.moveCall({
+        package: packageAddress,
+        module: 'party',
+        function: 'accept_invite',
+        arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+    });
+}
+export interface DeclineInviteArguments {
+    group: RawTransactionArgument<string>;
+    memberCap: RawTransactionArgument<string>;
+}
+export interface DeclineInviteOptions {
+    package?: string;
+    arguments: DeclineInviteArguments | [
+        group: RawTransactionArgument<string>,
+        memberCap: RawTransactionArgument<string>
+    ];
+}
+/** Declines a pending invite, authorized by the invited party's own admin cap. */
+export function declineInvite(options: DeclineInviteOptions) {
     const packageAddress = options.package ?? '@local-pkg/miso_party';
     const argumentsTypes = [
         null,
@@ -256,7 +280,104 @@ export function leave(options: LeaveOptions) {
     return (tx: Transaction) => tx.moveCall({
         package: packageAddress,
         module: 'party',
+        function: 'decline_invite',
+        arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+    });
+}
+export interface RevokeInviteArguments {
+    group: RawTransactionArgument<string>;
+    groupCap: RawTransactionArgument<string>;
+    memberId: RawTransactionArgument<string>;
+}
+export interface RevokeInviteOptions {
+    package?: string;
+    arguments: RevokeInviteArguments | [
+        group: RawTransactionArgument<string>,
+        groupCap: RawTransactionArgument<string>,
+        memberId: RawTransactionArgument<string>
+    ];
+}
+/** Revokes a pending invite, authorized by the group's admin cap. */
+export function revokeInvite(options: RevokeInviteOptions) {
+    const packageAddress = options.package ?? '@local-pkg/miso_party';
+    const argumentsTypes = [
+        null,
+        null,
+        '0x2::object::ID'
+    ] satisfies (string | null)[];
+    const parameterNames = ["group", "groupCap", "memberId"];
+    return (tx: Transaction) => tx.moveCall({
+        package: packageAddress,
+        module: 'party',
+        function: 'revoke_invite',
+        arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+    });
+}
+export interface LeaveArguments {
+    group: RawTransactionArgument<string>;
+    member: RawTransactionArgument<string>;
+    memberCap: RawTransactionArgument<string>;
+}
+export interface LeaveOptions {
+    package?: string;
+    arguments: LeaveArguments | [
+        group: RawTransactionArgument<string>,
+        member: RawTransactionArgument<string>,
+        memberCap: RawTransactionArgument<string>
+    ];
+}
+/**
+ * Removes the caller's party from a group, authorized by the _member's_ own admin
+ * capability — the member's unconditional exit. Clears both the group's member set
+ * and the member's own membership record.
+ */
+export function leave(options: LeaveOptions) {
+    const packageAddress = options.package ?? '@local-pkg/miso_party';
+    const argumentsTypes = [
+        null,
+        null,
+        null
+    ] satisfies (string | null)[];
+    const parameterNames = ["group", "member", "memberCap"];
+    return (tx: Transaction) => tx.moveCall({
+        package: packageAddress,
+        module: 'party',
         function: 'leave',
+        arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+    });
+}
+export interface RemoveMemberArguments {
+    group: RawTransactionArgument<string>;
+    groupCap: RawTransactionArgument<string>;
+    member: RawTransactionArgument<string>;
+}
+export interface RemoveMemberOptions {
+    package?: string;
+    arguments: RemoveMemberArguments | [
+        group: RawTransactionArgument<string>,
+        groupCap: RawTransactionArgument<string>,
+        member: RawTransactionArgument<string>
+    ];
+}
+/**
+ * Removes (evicts) a member from a group, authorized by the _group's_ admin
+ * capability. Because this module owns `Party`, it can scrub the member's own
+ * membership record here even without the member's cap — but only the record for
+ * _this_ group, so the admin's reach into the member is scoped to "cancel my
+ * group's membership" and nothing else on the member is touchable.
+ */
+export function removeMember(options: RemoveMemberOptions) {
+    const packageAddress = options.package ?? '@local-pkg/miso_party';
+    const argumentsTypes = [
+        null,
+        null,
+        null
+    ] satisfies (string | null)[];
+    const parameterNames = ["group", "groupCap", "member"];
+    return (tx: Transaction) => tx.moveCall({
+        package: packageAddress,
+        module: 'party',
+        function: 'remove_member',
         arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
     });
 }
@@ -400,6 +521,62 @@ export function groupMembers(options: GroupMembersOptions) {
         package: packageAddress,
         module: 'party',
         function: 'group_members',
+        arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+    });
+}
+export interface IsMemberArguments {
+    member: RawTransactionArgument<string>;
+    groupId: RawTransactionArgument<string>;
+}
+export interface IsMemberOptions {
+    package?: string;
+    arguments: IsMemberArguments | [
+        member: RawTransactionArgument<string>,
+        groupId: RawTransactionArgument<string>
+    ];
+}
+/**
+ * Whether `member` currently holds a membership record for `group_id`. Reads the
+ * member side, so it needs only the member party (no group object) — the primitive
+ * extensions use for member-gated authorization.
+ */
+export function isMember(options: IsMemberOptions) {
+    const packageAddress = options.package ?? '@local-pkg/miso_party';
+    const argumentsTypes = [
+        null,
+        '0x2::object::ID'
+    ] satisfies (string | null)[];
+    const parameterNames = ["member", "groupId"];
+    return (tx: Transaction) => tx.moveCall({
+        package: packageAddress,
+        module: 'party',
+        function: 'is_member',
+        arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+    });
+}
+export interface HasPendingInviteArguments {
+    group: RawTransactionArgument<string>;
+    memberId: RawTransactionArgument<string>;
+}
+export interface HasPendingInviteOptions {
+    package?: string;
+    arguments: HasPendingInviteArguments | [
+        group: RawTransactionArgument<string>,
+        memberId: RawTransactionArgument<string>
+    ];
+}
+/** Whether the group has a pending invite outstanding for `member_id`. */
+export function hasPendingInvite(options: HasPendingInviteOptions) {
+    const packageAddress = options.package ?? '@local-pkg/miso_party';
+    const argumentsTypes = [
+        null,
+        '0x2::object::ID'
+    ] satisfies (string | null)[];
+    const parameterNames = ["group", "memberId"];
+    return (tx: Transaction) => tx.moveCall({
+        package: packageAddress,
+        module: 'party',
+        function: 'has_pending_invite',
         arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
     });
 }

@@ -39,18 +39,107 @@ export function createGroupParty(params: CreatePartyParams): TxThunk {
   };
 }
 
-export interface AddMemberParams {
+// === Group membership: invite / accept / decline / revoke / leave / evict ===
+// Membership is consent-based: the group admin invites, the member accepts with
+// its OWN admin cap. `member`/`group`/`*Cap` params are all object ids.
+
+export interface InvitePartyParams {
   groupId: string;
   groupCapId: string;
-  /** The individual party's (shared) object id to add. */
+  /** The individual party (shared object id) to invite. */
   memberId: string;
   partyPackageId: string;
 }
 
-/** Adds an individual party to a group (gated by the group's admin cap). */
-export function addMember(params: AddMemberParams): TxThunk {
+/** Invites an individual party to a group (gated by the group's admin cap). */
+export function inviteParty(params: InvitePartyParams): TxThunk {
   return (tx) => {
-    tx.add(party.addParty({
+    tx.add(party.inviteParty({
+      package: params.partyPackageId,
+      arguments: [params.groupId, params.groupCapId, params.memberId],
+    }));
+  };
+}
+
+export interface AcceptInviteParams {
+  groupId: string;
+  memberId: string;
+  /** The member party's admin cap id (proves consent). */
+  memberCapId: string;
+  partyPackageId: string;
+}
+
+/** Accepts a pending invite, joining the member to the group (member's cap). */
+export function acceptInvite(params: AcceptInviteParams): TxThunk {
+  return (tx) => {
+    tx.add(party.acceptInvite({
+      package: params.partyPackageId,
+      arguments: [params.groupId, params.memberId, params.memberCapId],
+    }));
+  };
+}
+
+export interface DeclineInviteParams {
+  groupId: string;
+  memberCapId: string;
+  partyPackageId: string;
+}
+
+/** Declines a pending invite (member's cap). */
+export function declineInvite(params: DeclineInviteParams): TxThunk {
+  return (tx) => {
+    tx.add(party.declineInvite({
+      package: params.partyPackageId,
+      arguments: [params.groupId, params.memberCapId],
+    }));
+  };
+}
+
+export interface RevokeInviteParams {
+  groupId: string;
+  groupCapId: string;
+  memberId: string;
+  partyPackageId: string;
+}
+
+/** Revokes a pending invite (group's admin cap). */
+export function revokeInvite(params: RevokeInviteParams): TxThunk {
+  return (tx) => {
+    tx.add(party.revokeInvite({
+      package: params.partyPackageId,
+      arguments: [params.groupId, params.groupCapId, params.memberId],
+    }));
+  };
+}
+
+export interface LeaveGroupParams {
+  groupId: string;
+  memberId: string;
+  memberCapId: string;
+  partyPackageId: string;
+}
+
+/** Leaves a group, authorized by the member's own admin cap. */
+export function leaveGroup(params: LeaveGroupParams): TxThunk {
+  return (tx) => {
+    tx.add(party.leave({
+      package: params.partyPackageId,
+      arguments: [params.groupId, params.memberId, params.memberCapId],
+    }));
+  };
+}
+
+export interface RemoveMemberParams {
+  groupId: string;
+  groupCapId: string;
+  memberId: string;
+  partyPackageId: string;
+}
+
+/** Evicts a member from a group (group's admin cap); scrubs the member's record too. */
+export function removeMember(params: RemoveMemberParams): TxThunk {
+  return (tx) => {
+    tx.add(party.removeMember({
       package: params.partyPackageId,
       arguments: [params.groupId, params.groupCapId, params.memberId],
     }));
