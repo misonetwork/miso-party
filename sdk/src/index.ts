@@ -10,6 +10,7 @@ export * from "./extensions/tags.ts";
 export * from "./extensions/genres.ts";
 export * from "./extensions/ctas.ts";
 export * from "./extensions/links.ts";
+export * from "./extensions/featured.ts";
 export * from "./queries.ts";
 export * from "./execute.ts";
 export * from "./client.ts";

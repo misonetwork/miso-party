@@ -26,7 +26,8 @@
     "./extensions/tags": "./src/extensions/tags.ts",
     "./extensions/genres": "./src/extensions/genres.ts",
     "./extensions/ctas": "./src/extensions/ctas.ts",
-    "./extensions/links": "./src/extensions/links.ts"
+    "./extensions/links": "./src/extensions/links.ts",
+    "./extensions/featured": "./src/extensions/featured.ts"
   },
   "files": [
     "src",
