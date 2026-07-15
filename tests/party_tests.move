@@ -255,21 +255,26 @@ fun test_invite_exceeds_max_group_members() {
 #[test, expected_failure(abort_code = EEmptyString, location = party)]
 fun test_new_empty_name() {
     let ctx = &mut tx_context::dummy();
-    let (party, cap) = party::new(party::new_individual_kind(), b"".to_string(), ctx);
+    let clock = sui::clock::create_for_testing(ctx);
+    let (party, cap) = party::new(party::new_individual_kind(), b"".to_string(), &clock, ctx);
     destroy(party);
     destroy(cap);
+    clock.destroy_for_testing();
 }
 
 #[test, expected_failure(abort_code = EMaxNameLengthExceeded, location = party)]
 fun test_new_name_too_long() {
     let ctx = &mut tx_context::dummy();
+    let clock = sui::clock::create_for_testing(ctx);
     let (party, cap) = party::new(
         party::new_individual_kind(),
         test_helpers::long_string(MAX_NAME_LENGTH + 1),
+        &clock,
         ctx,
     );
     destroy(party);
     destroy(cap);
+    clock.destroy_for_testing();
 }
 
 #[test, expected_failure(abort_code = EEmptyString, location = party)]

@@ -13,6 +13,8 @@ export interface Party {
   name: string;
   /** Member party ids — present only when `kind === "group"`. */
   members?: string[];
+  /** Unix ms when the party was created. */
+  createdAtMs: number;
 }
 
 export interface Profile {

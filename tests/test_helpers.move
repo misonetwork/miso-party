@@ -3,20 +3,30 @@ module miso_party::test_helpers;
 
 use miso_party::party::{Self, Party, PartyAdminCap};
 use std::string::String;
+use sui::clock;
 
 /// Creates an individual party with a default name for testing.
 public fun individual(ctx: &mut TxContext): (Party, PartyAdminCap) {
-    party::new(party::new_individual_kind(), b"Test Artist".to_string(), ctx)
+    let clock = clock::create_for_testing(ctx);
+    let (party, cap) = party::new(party::new_individual_kind(), b"Test Artist".to_string(), &clock, ctx);
+    clock.destroy_for_testing();
+    (party, cap)
 }
 
 /// Creates an individual party with a custom name for testing.
 public fun individual_named(name: String, ctx: &mut TxContext): (Party, PartyAdminCap) {
-    party::new(party::new_individual_kind(), name, ctx)
+    let clock = clock::create_for_testing(ctx);
+    let (party, cap) = party::new(party::new_individual_kind(), name, &clock, ctx);
+    clock.destroy_for_testing();
+    (party, cap)
 }
 
 /// Creates a group party with a default name for testing.
 public fun group(ctx: &mut TxContext): (Party, PartyAdminCap) {
-    party::new(party::new_group_kind(), b"Test Group".to_string(), ctx)
+    let clock = clock::create_for_testing(ctx);
+    let (party, cap) = party::new(party::new_group_kind(), b"Test Group".to_string(), &clock, ctx);
+    clock.destroy_for_testing();
+    (party, cap)
 }
 
 /// Creates a string of the given length filled with 'A' characters.

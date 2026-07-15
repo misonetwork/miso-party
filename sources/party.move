@@ -13,6 +13,7 @@
 module miso_party::party;
 
 use std::string::String;
+use sui::clock::Clock;
 use sui::derived_object::claim;
 use sui::dynamic_field as df;
 use sui::event::emit;
@@ -33,6 +34,8 @@ public struct Party has key {
     /// Note this name is not "official" or "verified" in any way.
     /// Verification should be performed by the application layer.
     name: String,
+    /// Unix ms when the party was created. Set once at `new`; immutable.
+    created_at_ms: u64,
 }
 
 /// Capability that authorizes modifications to a specific party.
@@ -104,6 +107,8 @@ public struct PartyCreatedEvent has copy, drop {
     name: String,
     /// Kind of the party.
     kind: String,
+    /// Unix ms when the party was created.
+    created_at_ms: u64,
 }
 
 public struct PartyNameSetEvent has copy, drop {
@@ -209,14 +214,21 @@ const ENoPendingInvite: u64 = 51;
 /// Creates a new party with the specified kind and name.
 /// Returns the admin capability for managing the party.
 /// The party is shared and starts in the Created state.
-public fun new(kind: PartyKind, name: String, ctx: &mut TxContext): (Party, PartyAdminCap) {
+public fun new(
+    kind: PartyKind,
+    name: String,
+    clock: &Clock,
+    ctx: &mut TxContext,
+): (Party, PartyAdminCap) {
     assert!(!name.is_empty(), EEmptyString);
     assert!(name.length() <= MAX_NAME_LENGTH, EMaxNameLengthExceeded);
 
+    let created_at_ms = clock.timestamp_ms();
     let mut party = Party {
         id: object::new(ctx),
         kind,
         name,
+        created_at_ms,
     };
 
     let party_id = party.id();
@@ -230,6 +242,7 @@ public fun new(kind: PartyKind, name: String, ctx: &mut TxContext): (Party, Part
         party_id: party.id(),
         name,
         kind: party.kind.name(),
+        created_at_ms,
     });
 
     (party, party_admin_cap)
@@ -398,6 +411,11 @@ public fun name(self: &Party): String {
     self.name
 }
 
+/// Returns the Unix ms when this party was created.
+public fun created_at_ms(self: &Party): u64 {
+    self.created_at_ms
+}
+
 /// Returns true if this party is an individual.
 public fun is_individual_kind(self: &Party): bool {
     match (&self.kind) {
@@ -498,6 +516,7 @@ public fun new_group_with_n_members_for_testing(
         id: object::new(ctx),
         kind: PartyKind::Group(members),
         name: b"Test Group".to_string(),
+        created_at_ms: 0,
     };
 
     let party_id = party.id();

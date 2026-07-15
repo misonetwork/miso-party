@@ -83,6 +83,7 @@ export function mapCtas(d: any): Cta[] {
 // deno-lint-ignore no-explicit-any -- generated parse output is loosely typed
 export function mapParty(id: string, d: any): Party {
   const kind = d.kind;
+  const createdAtMs = Number(d.created_at_ms);
   // PartyKind is `Individual | Group(VecSet<ID>)`. The enum parses to
   // `{ $kind, Individual? , Group? }`; Group's payload is a VecSet `{ contents }`.
   const groupPayload = kind?.Group ?? (kind?.$kind === "Group" ? kind.value : undefined);
@@ -91,7 +92,7 @@ export function mapParty(id: string, d: any): Party {
     const members = (Array.isArray(contents) ? contents : []).map((m: unknown) =>
       typeof m === "string" ? m : (m as { id?: string })?.id ?? String(m),
     );
-    return { id, kind: "group", name: d.name, members };
+    return { id, kind: "group", name: d.name, members, createdAtMs };
   }
-  return { id, kind: "individual", name: d.name };
+  return { id, kind: "individual", name: d.name, createdAtMs };
 }

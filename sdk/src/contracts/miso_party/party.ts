@@ -36,7 +36,9 @@ export const Party = new MoveStruct({ name: `${$moduleName}::Party`, fields: {
          * Human-readable name of the party. Note this name is not "official" or "verified"
          * in any way. Verification should be performed by the application layer.
          */
-        name: bcs.string()
+        name: bcs.string(),
+        /** Unix ms when the party was created. Set once at `new`; immutable. */
+        created_at_ms: bcs.u64()
     } });
 export const PartyAdminCap = new MoveStruct({ name: `${$moduleName}::PartyAdminCap`, fields: {
         /** Unique identifier for this capability. */
@@ -57,7 +59,9 @@ export const PartyCreatedEvent = new MoveStruct({ name: `${$moduleName}::PartyCr
         /** Name of the party. */
         name: bcs.string(),
         /** Kind of the party. */
-        kind: bcs.string()
+        kind: bcs.string(),
+        /** Unix ms when the party was created. */
+        created_at_ms: bcs.u64()
     } });
 export const PartyNameSetEvent = new MoveStruct({ name: `${$moduleName}::PartyNameSetEvent`, fields: {
         /** ID of the party. */
@@ -121,7 +125,8 @@ export function _new(options: NewOptions) {
     const packageAddress = options.package ?? '@local-pkg/miso_party';
     const argumentsTypes = [
         null,
-        '0x1::string::String'
+        '0x1::string::String',
+        '0x2::clock::Clock'
     ] satisfies (string | null)[];
     const parameterNames = ["kind", "name"];
     return (tx: Transaction) => tx.moveCall({
@@ -452,6 +457,29 @@ export function name(options: NameOptions) {
         package: packageAddress,
         module: 'party',
         function: 'name',
+        arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
+    });
+}
+export interface CreatedAtMsArguments {
+    self: RawTransactionArgument<string>;
+}
+export interface CreatedAtMsOptions {
+    package?: string;
+    arguments: CreatedAtMsArguments | [
+        self: RawTransactionArgument<string>
+    ];
+}
+/** Returns the Unix ms when this party was created. */
+export function createdAtMs(options: CreatedAtMsOptions) {
+    const packageAddress = options.package ?? '@local-pkg/miso_party';
+    const argumentsTypes = [
+        null
+    ] satisfies (string | null)[];
+    const parameterNames = ["self"];
+    return (tx: Transaction) => tx.moveCall({
+        package: packageAddress,
+        module: 'party',
+        function: 'created_at_ms',
         arguments: normalizeMoveArguments(options.arguments, argumentsTypes, parameterNames),
     });
 }
