@@ -15,4 +15,4 @@ export * as partyPlatformLink from "./contracts/party_platform_link/party_platfo
 export * as partySocial from "./contracts/party_social/party_social.ts";
 export * as partyMusic from "./contracts/party_music/party_music.ts";
 export * as partyProLink from "./contracts/party_pro_link/party_pro_link.ts";
-export * as partyFeaturedPressing from "./contracts/party_featured_pressing/party_featured_pressing.ts";
+export * as partyFeaturedDrop from "./contracts/party_featured_drop/party_featured_drop.ts";

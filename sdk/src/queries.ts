@@ -15,7 +15,7 @@ import { PartyRoles as PartyRolesBcs, RolesKey as RolesKeyBcs } from "./contract
 import { PartyTags as PartyTagsBcs, TagsKey as TagsKeyBcs } from "./contracts/party_tags/party_tags.ts";
 import { PartyGenres as PartyGenresBcs, GenresKey as GenresKeyBcs } from "./contracts/party_genre/party_genre.ts";
 import { Cta as CtaBcs, CtasKey as CtasKeyBcs } from "./contracts/party_cta/party_cta.ts";
-import { FeaturedKey as FeaturedKeyBcs } from "./contracts/party_featured_pressing/party_featured_pressing.ts";
+import { FeaturedKey as FeaturedKeyBcs } from "./contracts/party_featured_drop/party_featured_drop.ts";
 import { mapCtas, mapGenres, mapMedia, mapParty, mapProfile, mapRoles, mapTags } from "./internal.ts";
 import { buildLink, platformForDataType } from "./extensions/links.ts";
 import type { Cta, Media, Party, PlatformLink, Profile } from "./types.ts";
@@ -167,15 +167,15 @@ const FEATURED_KEY_BYTES = FeaturedKeyBcs.serialize([false]).toBytes();
 // The featured field's value is a bare `ID` (an address), not a wrapper struct.
 const FeaturedField = bcs.struct("Field", { id: bcs.Address, name: FeaturedKeyBcs, value: bcs.Address });
 
-/** The party's featured pressing id (a shared `Pressing` object id), or `null` if none is set. */
-export async function getFeaturedPressing(
+/** The party's featured drop id (a shared `Drop` object id), or `null` if none is set. */
+export async function getFeaturedDrop(
   client: ClientWithCoreApi,
   partyId: string,
-  partyFeaturedPressingPackageId: string,
+  partyFeaturedDropPackageId: string,
 ): Promise<string | null> {
   const fieldId = deriveDynamicFieldID(
     partyId,
-    `${partyFeaturedPressingPackageId}::party_featured_pressing::FeaturedKey`,
+    `${partyFeaturedDropPackageId}::party_featured_drop::FeaturedKey`,
     FEATURED_KEY_BYTES,
   );
   const content = await getContent(client, fieldId);

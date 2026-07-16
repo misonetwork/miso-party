@@ -21,7 +21,7 @@ const config: SuiCodegenConfig = {
     { package: "@local-pkg/party_social", path: "../../miso-party-extensions/party_social" },
     { package: "@local-pkg/party_music", path: "../../miso-party-extensions/party_music" },
     { package: "@local-pkg/party_pro_link", path: "../../miso-party-extensions/party_pro_link" },
-    { package: "@local-pkg/party_featured_pressing", path: "../../miso-party-extensions/party_featured_pressing" },
+    { package: "@local-pkg/party_featured_drop", path: "../../miso-party-extensions/party_featured_drop" },
   ],
 };
 

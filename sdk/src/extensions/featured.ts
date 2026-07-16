@@ -1,49 +1,49 @@
 // Copyright (c) Miso Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-// The `party_featured_pressing` extension: the single pressing a party headlines on
-// its profile. `set_featured` takes the live `Pressing<Currency>` object (so the
-// stored id is proven to be a real pressing) and keeps only its id; the value read
-// back is that id. The `Currency` type argument is the pressing's coin type.
+// The `party_featured_drop` extension: the single drop a party headlines on
+// its profile. `set_featured` takes the live `Drop<Currency>` object (so the
+// stored id is proven to be a real drop) and keeps only its id; the value read
+// back is that id. The `Currency` type argument is the drop's coin type.
 
-import * as featuredMod from "../contracts/party_featured_pressing/party_featured_pressing.ts";
+import * as featuredMod from "../contracts/party_featured_drop/party_featured_drop.ts";
 import type { TxThunk } from "../transactions.ts";
 
-export interface SetFeaturedPressingParams {
+export interface SetFeaturedDropParams {
   partyId: string;
   capId: string;
-  /** The shared `Pressing` object id to feature. */
-  pressingId: string;
-  /** The pressing's `Currency` type (e.g. `0x2::sui::SUI`). */
+  /** The shared `Drop` object id to feature. */
+  dropId: string;
+  /** The drop's `Currency` type (e.g. `0x2::sui::SUI`). */
   currencyType: string;
-  partyFeaturedPressingPackageId: string;
+  partyFeaturedDropPackageId: string;
 }
 
-/** Features a pressing on the party, replacing any existing pin. */
-export function setFeaturedPressing(params: SetFeaturedPressingParams): TxThunk {
+/** Features a drop on the party, replacing any existing pin. */
+export function setFeaturedDrop(params: SetFeaturedDropParams): TxThunk {
   return (tx) => {
     tx.add(
       featuredMod.setFeatured({
-        package: params.partyFeaturedPressingPackageId,
-        arguments: [params.partyId, params.capId, params.pressingId],
+        package: params.partyFeaturedDropPackageId,
+        arguments: [params.partyId, params.capId, params.dropId],
         typeArguments: [params.currencyType],
       }),
     );
   };
 }
 
-export interface ClearFeaturedPressingParams {
+export interface ClearFeaturedDropParams {
   partyId: string;
   capId: string;
-  partyFeaturedPressingPackageId: string;
+  partyFeaturedDropPackageId: string;
 }
 
-/** Removes the party's featured pressing. No-op on-chain if none is set. */
-export function clearFeaturedPressing(params: ClearFeaturedPressingParams): TxThunk {
+/** Removes the party's featured drop. No-op on-chain if none is set. */
+export function clearFeaturedDrop(params: ClearFeaturedDropParams): TxThunk {
   return (tx) => {
     tx.add(
       featuredMod.clearFeatured({
-        package: params.partyFeaturedPressingPackageId,
+        package: params.partyFeaturedDropPackageId,
         arguments: [params.partyId, params.capId],
       }),
     );

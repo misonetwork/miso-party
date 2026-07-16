@@ -28,7 +28,7 @@ import * as platformLinkMod from "./contracts/party_platform_link/party_platform
 import * as socialMod from "./contracts/party_social/party_social.ts";
 import * as musicMod from "./contracts/party_music/party_music.ts";
 import * as proLinkMod from "./contracts/party_pro_link/party_pro_link.ts";
-import * as featuredMod from "./contracts/party_featured_pressing/party_featured_pressing.ts";
+import * as featuredMod from "./contracts/party_featured_drop/party_featured_drop.ts";
 
 export interface PartyClientOptions<Name extends string = "party"> {
   /** Name for the client extension. Defaults to "party". */
@@ -46,7 +46,7 @@ export interface PartyClientOptions<Name extends string = "party"> {
   partySocialPackageId: string;
   partyMusicPackageId: string;
   partyProLinkPackageId: string;
-  partyFeaturedPressingPackageId: string;
+  partyFeaturedDropPackageId: string;
   /** The `genre` vocabulary package (source of `Genre` objects tagged via `party_genre`). */
   genrePackageId: string;
 }
@@ -96,7 +96,7 @@ export class PartyClient {
   #socialPkg: string;
   #musicPkg: string;
   #proLinkPkg: string;
-  #featuredPressingPkg: string;
+  #featuredDropPkg: string;
   #genrePkg: string;
 
   constructor(client: ClientWithCoreApi, o: Omit<PartyClientOptions, "name">) {
@@ -114,7 +114,7 @@ export class PartyClient {
     this.#socialPkg = o.partySocialPackageId;
     this.#musicPkg = o.partyMusicPackageId;
     this.#proLinkPkg = o.partyProLinkPackageId;
-    this.#featuredPressingPkg = o.partyFeaturedPressingPackageId;
+    this.#featuredDropPkg = o.partyFeaturedDropPackageId;
     this.#genrePkg = o.genrePackageId;
   }
 
@@ -156,9 +156,9 @@ export class PartyClient {
   async getCtas(partyId: string): Promise<Cta[]> {
     return queries.getCtas(this.#client, partyId, this.#ctaPkg);
   }
-  /** The party's featured pressing id (a shared `Pressing` object id), or null if unset. */
-  async getFeaturedPressing(partyId: string): Promise<string | null> {
-    return queries.getFeaturedPressing(this.#client, partyId, this.#featuredPressingPkg);
+  /** The party's featured drop id (a shared `Drop` object id), or null if unset. */
+  async getFeaturedDrop(partyId: string): Promise<string | null> {
+    return queries.getFeaturedDrop(this.#client, partyId, this.#featuredDropPkg);
   }
   /** All external-platform links attached to the party (social, music, professional). */
   async getLinks(partyId: string): Promise<PlatformLink[]> {
@@ -189,7 +189,7 @@ export class PartyClient {
     const tagsPkg = this.#tagsPkg;
     const ctaPkg = this.#ctaPkg;
     const partyGenrePkg = this.#partyGenrePkg;
-    const featuredPkg = this.#featuredPressingPkg;
+    const featuredPkg = this.#featuredDropPkg;
     const linkIds: linksExt.LinkPackageIds = {
       partyPlatformLinkPackageId: this.#platformLinkPkg,
       partySocialPackageId: this.#socialPkg,
@@ -256,13 +256,13 @@ export class PartyClient {
         ctasExt.setCtas({ ...p, partyCtaPackageId: ctaPkg }),
       clearCtas: (p: Omit<ctasExt.ClearCtasParams, "partyCtaPackageId">): TxThunk =>
         ctasExt.clearCtas({ ...p, partyCtaPackageId: ctaPkg }),
-      // Featured pressing
-      setFeaturedPressing: (
-        p: Omit<featuredExt.SetFeaturedPressingParams, "partyFeaturedPressingPackageId">,
-      ): TxThunk => featuredExt.setFeaturedPressing({ ...p, partyFeaturedPressingPackageId: featuredPkg }),
-      clearFeaturedPressing: (
-        p: Omit<featuredExt.ClearFeaturedPressingParams, "partyFeaturedPressingPackageId">,
-      ): TxThunk => featuredExt.clearFeaturedPressing({ ...p, partyFeaturedPressingPackageId: featuredPkg }),
+      // Featured drop
+      setFeaturedDrop: (
+        p: Omit<featuredExt.SetFeaturedDropParams, "partyFeaturedDropPackageId">,
+      ): TxThunk => featuredExt.setFeaturedDrop({ ...p, partyFeaturedDropPackageId: featuredPkg }),
+      clearFeaturedDrop: (
+        p: Omit<featuredExt.ClearFeaturedDropParams, "partyFeaturedDropPackageId">,
+      ): TxThunk => featuredExt.clearFeaturedDrop({ ...p, partyFeaturedDropPackageId: featuredPkg }),
       // Platform links — generic (any platform) plus per-platform `set…`/`clear…`.
       setLink: (platform: PlatformKey, p: linksExt.BoundSetLinkParams): TxThunk =>
         linksExt.setLink(platform, { ...p, ...linkIds }),
@@ -287,7 +287,7 @@ export class PartyClient {
       social: bindModulePackage(socialMod, this.#socialPkg),
       music: bindModulePackage(musicMod, this.#musicPkg),
       proLink: bindModulePackage(proLinkMod, this.#proLinkPkg),
-      featuredPressing: bindModulePackage(featuredMod, this.#featuredPressingPkg),
+      featuredDrop: bindModulePackage(featuredMod, this.#featuredDropPkg),
     };
   }
 
